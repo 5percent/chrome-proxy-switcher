@@ -1,0 +1,79 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 12px;
+  width: 320px;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 16px;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: all 120ms ease;
+}
+
+button:hover {
+  background: #273449;
+  border-color: #3b4a63;
+}
+
+button.active {
+  background: #22c55e;
+  color: #0f172a;
+  border-color: #16a34a;
+}
+
+.card {
+  border: 1px solid #1f2937;
+  background: #111827;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.label {
+  opacity: 0.7;
+  font-size: 12px;
+  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+}
+
+.value {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+#profiles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#profiles button {
+  width: 100%;
+  text-align: left;
+}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proxy Switcher Options</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <h1>Proxy Switcher</h1>
+    <div class="layout">
+      <aside class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Proxy 列表</div>
+          <button id="add-profile" type="button">添加</button>
+        </div>
+        <div class="tools-row">
+          <button id="export-profiles" class="secondary" type="button">导出 JSON</button>
+          <button id="import-profiles" class="secondary" type="button">导入 JSON</button>
+          <input id="import-file" type="file" accept="application/json,.json" hidden />
+        </div>
+        <div id="import-status" class="muted"></div>
+        <ul id="profile-list"></ul>
+      </aside>
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title" id="detail-title">选择一个代理</div>
+          <button id="delete-profile" class="secondary" type="button">删除</button>
+        </div>
+        <div id="detail-body" class="detail-placeholder">
+          右侧将展示选中代理的详细配置。配置项稍后补充。
+        </div>
+      </section>
+    </div>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

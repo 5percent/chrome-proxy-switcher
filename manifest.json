@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Chrome Proxy Switcher",
+  "description": "Quickly toggle HTTP(S) proxies and switch between rule-based profiles.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "114",
+  "permissions": [
+    "proxy",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "Proxy Switcher",
+    "default_popup": "src/popup.html"
+  },
+  "options_page": "src/options.html",
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  }
+}
