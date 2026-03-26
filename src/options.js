@@ -219,6 +219,16 @@ async function importProfilesFromFile(file) {
     }
 
     await persistState();
+    if (state.activeProfileId) {
+      try {
+        await chrome.runtime.sendMessage({
+          type: "setActiveProfile",
+          profileId: state.activeProfileId,
+        });
+      } catch (error) {
+        console.warn("apply active after import failed", error);
+      }
+    }
     render();
     setImportStatus(
       `导入完成：新增 ${result.added}，更新 ${result.updated}，跳过 ${result.skipped}。`,
