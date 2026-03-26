@@ -127,7 +127,11 @@ function buildPacScript(profile) {
 
 async function applyProfile(profile) {
   if (!profile) return;
+  // 先清理当前 scope 下的设置，避免残留 PAC 配置
+  await chrome.proxy.settings.clear({ scope: "regular" });
+
   if (profile.mode === "direct") {
+    // 不使用任何代理，所有请求直接连接
     await chrome.proxy.settings.set({
       scope: "regular",
       value: { mode: "direct" },
