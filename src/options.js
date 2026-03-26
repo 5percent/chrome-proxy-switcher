@@ -72,11 +72,17 @@ function stripRuleId(rule) {
 }
 
 function exportDataPayload() {
+  const exportProfiles = state.profiles.filter((p) => p.mode !== "direct");
+  const exportActiveId = exportProfiles.some(
+    (p) => p.id === state.activeProfileId,
+  )
+    ? state.activeProfileId
+    : null;
   return {
     schemaVersion: 1,
     exportedAt: new Date().toISOString(),
-    activeProfileId: state.activeProfileId,
-    profiles: state.profiles.map((profile) => ({
+    activeProfileId: exportActiveId,
+    profiles: exportProfiles.map((profile) => ({
       ...profile,
       rules: (profile.rules || []).map(stripRuleId),
     })),

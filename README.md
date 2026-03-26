@@ -19,7 +19,7 @@
   - `port`
 - `direct` 配置不可编辑、不可删除
 - 非 `direct` Profile 至少保留 1 条规则
-- 支持 JSON 导出全部 Profile；支持跨电脑增量导入（按 `id` 或名称合并）
+- JSON 导出仅包含非 `direct` Profile；支持跨电脑增量导入（按 `id` 或名称合并）
 - 兼容旧配置结构（自动迁移旧字段）
 
 ## 项目结构
