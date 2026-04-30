@@ -17,9 +17,9 @@
   - `protocol`（HTTP / HTTPS）
   - `domain`
   - `port`
-- `direct` 配置不可编辑、不可删除
-- 非 `direct` Profile 至少保留 1 条规则
-- JSON 导出仅包含非 `direct` Profile；支持跨电脑增量导入（按 `id` 或名称合并）
+- `System Proxy` 配置不可编辑、不可删除，会跟随系统代理（如 ClashX）
+- 非 `System Proxy` Profile 至少保留 1 条规则
+- JSON 导出仅包含非 `System Proxy` Profile；支持跨电脑增量导入（按 `id` 或名称合并）
 - 兼容旧配置结构（自动迁移旧字段）
 
 ## 项目结构
@@ -50,8 +50,8 @@
   "profiles": [
     {
       "id": "direct",
-      "name": "Direct (Off)",
-      "mode": "direct",
+      "name": "System Proxy",
+      "mode": "system",
       "rules": []
     },
     {
@@ -75,8 +75,8 @@
 
 - 切换 Profile 时，`background.js` 会：
   1. 读取当前状态
-  2. 按 Profile 生成 PAC 脚本
-  3. 调用 `chrome.proxy.settings.set` 应用为 `pac_script`（或 `direct`）
+  2. 若为 `System Proxy`，清除扩展设置，让 Chrome 回退到系统代理
+  3. 若为自定义 Profile，按规则生成 PAC 脚本并调用 `chrome.proxy.settings.set`
 - 命中规则时返回对应代理；未命中返回 `DIRECT`
 
 ## 导入 / 导出（JSON）
@@ -88,7 +88,7 @@
   - 先按 `id` 匹配，匹配到则更新该 Profile
   - 未按 `id` 匹配到时，按名称（不区分大小写）匹配并更新
   - 两者都不匹配则新增 Profile
-  - `direct` 配置会被跳过，不会被导入覆盖
+  - `System Proxy` / 旧版 `direct` 配置会被跳过，不会被导入覆盖
 - 支持两种导入格式：
   1. 完整对象：`{ schemaVersion, activeProfileId, profiles: [...] }`
   2. 纯数组：`[ ...profiles ]`
@@ -96,6 +96,7 @@
 ## 注意事项
 
 - 切换代理后，已打开网页通常需要刷新，新的请求才会按新规则走代理。
+- 选择 `System Proxy` 时，Chrome 会回退到系统代理，因此可与 ClashX 一起使用。
 - 若 Profile 规则未配置完整（如缺少 `domain/port`），会被视为无效规则。
 - 代理是否可达取决于你填写的目标代理服务本身。
 

@@ -4,8 +4,8 @@ const defaultState = {
   profiles: [
     {
       id: "direct",
-      name: "Direct (Off)",
-      mode: "direct",
+      name: "System Proxy",
+      mode: "system",
       rules: [],
     },
     {
@@ -24,6 +24,10 @@ const defaultState = {
   ],
   activeProfileId: "direct",
 };
+
+function isSystemProfile(profile) {
+  return profile?.mode === "system" || profile?.mode === "direct";
+}
 
 function normalizeRule(rule) {
   if (!rule) return null;
@@ -72,7 +76,18 @@ function migrateLegacyRules(profile) {
 
 function normalizeProfile(profile) {
   if (!profile) return null;
-  if (profile.mode === "direct") return { ...profile, rules: [] };
+  if (isSystemProfile(profile)) {
+    return {
+      ...profile,
+      id: profile.id || "direct",
+      name:
+        !profile.name || profile.name === "Direct (Off)"
+          ? "System Proxy"
+          : profile.name,
+      mode: "system",
+      rules: [],
+    };
+  }
 
   let rules = (profile.rules || []).map(normalizeRule).filter(Boolean);
   if (!rules.length) {
@@ -101,7 +116,7 @@ function escapePac(str) {
 }
 
 function buildPacScript(profile) {
-  if (profile.mode === "direct") {
+  if (isSystemProfile(profile)) {
     return "function FindProxyForURL(url, host) { return 'DIRECT'; }";
   }
 
@@ -127,15 +142,10 @@ function buildPacScript(profile) {
 
 async function applyProfile(profile) {
   if (!profile) return;
-  // 先清理当前 scope 下的设置，避免残留 PAC 配置
+  // 清理扩展写入的代理配置；System 模式下让 Chrome 回退到系统代理。
   await chrome.proxy.settings.clear({ scope: "regular" });
 
-  if (profile.mode === "direct") {
-    // 不使用任何代理，所有请求直接连接
-    await chrome.proxy.settings.set({
-      scope: "regular",
-      value: { mode: "direct" },
-    });
+  if (isSystemProfile(profile)) {
     return;
   }
 

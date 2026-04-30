@@ -13,6 +13,10 @@ const importStatusEl = document.getElementById("import-status");
 let state = { profiles: [], activeProfileId: null };
 let selectedId = null;
 
+function isSystemProfile(profile) {
+  return profile?.mode === "system" || profile?.mode === "direct";
+}
+
 function newRuleId() {
   return `rule-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -40,8 +44,17 @@ function normalizeRule(rule) {
 
 function normalizeProfile(profile) {
   if (!profile) return null;
-  if (profile.mode === "direct") {
-    return { ...profile, rules: [] };
+  if (isSystemProfile(profile)) {
+    return {
+      ...profile,
+      id: profile.id || "direct",
+      name:
+        !profile.name || profile.name === "Direct (Off)"
+          ? "System Proxy"
+          : profile.name,
+      mode: "system",
+      rules: [],
+    };
   }
   const rules =
     profile.rules && profile.rules.length
@@ -72,7 +85,7 @@ function stripRuleId(rule) {
 }
 
 function exportDataPayload() {
-  const exportProfiles = state.profiles.filter((p) => p.mode !== "direct");
+  const exportProfiles = state.profiles.filter((p) => !isSystemProfile(p));
   const exportActiveId = exportProfiles.some(
     (p) => p.id === state.activeProfileId,
   )
@@ -137,7 +150,7 @@ function mergeProfilesIncremental(importedProfiles) {
       skipped += 1;
       return;
     }
-    if (incoming.mode === "direct") {
+    if (isSystemProfile(incoming)) {
       skipped += 1;
       return;
     }
@@ -209,7 +222,7 @@ async function importProfilesFromFile(file) {
       activeProfileId:
         state.activeProfileId ||
         payload.activeProfileId ||
-        result.profiles.find((p) => p.mode !== "direct")?.id ||
+        result.profiles.find((p) => !isSystemProfile(p))?.id ||
         result.profiles[0]?.id ||
         null,
     };
@@ -300,7 +313,7 @@ function renderList() {
     }
     const modeTag = document.createElement("span");
     modeTag.className = "tag";
-    modeTag.textContent = profile.mode === "direct" ? "Direct" : "Proxy";
+    modeTag.textContent = isSystemProfile(profile) ? "System" : "Proxy";
     tags.appendChild(modeTag);
 
     meta.appendChild(name);
@@ -315,7 +328,7 @@ function renderList() {
       deleteProfile(profile.id);
     });
     deleteBtnInline.disabled =
-      state.profiles.length <= 1 || profile.mode === "direct";
+      state.profiles.length <= 1 || isSystemProfile(profile);
 
     li.appendChild(meta);
     li.appendChild(deleteBtnInline);
@@ -333,9 +346,10 @@ function renderDetail() {
   }
 
   detailTitleEl.textContent = profile.name;
-  if (profile.mode === "direct") {
+  if (isSystemProfile(profile)) {
     detailBodyEl.className = "detail-placeholder";
-    detailBodyEl.textContent = "Direct 模式无需配置，且不可编辑。";
+    detailBodyEl.textContent =
+      "System 模式会跟随操作系统代理设置（例如 ClashX），且不可编辑。";
     deleteBtn.disabled = true;
     return;
   }
@@ -569,7 +583,7 @@ async function updateRule(profileId, ruleId, field, value) {
 async function deleteProfile(profileId) {
   if (state.profiles.length <= 1) return;
   const target = state.profiles.find((p) => p.id === profileId);
-  if (target?.mode === "direct") return;
+  if (isSystemProfile(target)) return;
   const removedActive = state.activeProfileId === profileId;
   state = {
     ...state,
