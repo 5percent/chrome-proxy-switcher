@@ -18,7 +18,6 @@
   - `matchType`（`urlPattern` / `host`）
   - `urlPattern`（PAC 的 `shExpMatch`）
   - `host`（命中根域和任意子域，忽略 protocol/path）
-  - `protocol`（HTTP / HTTPS）
   - `domain`
   - `port`
 - `System Proxy` 配置不可编辑、不可删除，会跟随系统代理（如 ClashX）
@@ -65,7 +64,6 @@
       "rules": [
         {
           "urlPattern": "*://*/*",
-          "protocol": "HTTP",
           "domain": "127.0.0.1",
           "port": "8080"
         }
@@ -83,6 +81,7 @@
   3. 若为自定义 Profile，按规则生成 PAC 脚本并调用 `chrome.proxy.settings.set`
 - 命中规则时返回对应代理；未命中返回 `DIRECT`
 - `host` 模式会匹配 `example.com` 以及所有 `*.example.com`，不区分协议和路径
+- 代理地址默认按 HTTP 代理处理，规则本身不再区分代理协议
 
 ## 导入 / 导出（JSON）
 

@@ -64,7 +64,6 @@ function makeDefaultRule() {
     matchType: MATCH_TYPE_URL,
     urlPattern: "*://*/*",
     host: "",
-    protocol: "HTTP",
     domain: "",
     port: "8080",
   };
@@ -84,7 +83,6 @@ function normalizeRule(rule) {
       matchType === MATCH_TYPE_HOST
         ? normalizeHostValue(rule.host || rule.urlPattern || rule.value || "")
         : "",
-    protocol: rule.protocol || "HTTP",
     domain: rule.domain || "",
     port: rule.port ? String(rule.port) : "",
   };
@@ -488,24 +486,6 @@ function renderDetail() {
     matchField.appendChild(matchLabel);
     matchField.appendChild(matchInput);
 
-    const protoField = document.createElement("div");
-    protoField.className = "field";
-    const protoLabel = document.createElement("label");
-    protoLabel.textContent = "Protocol";
-    const protoSelect = document.createElement("select");
-    ["HTTP", "HTTPS"].forEach((optionValue) => {
-      const opt = document.createElement("option");
-      opt.value = optionValue;
-      opt.textContent = optionValue;
-      if (rule.protocol === optionValue) opt.selected = true;
-      protoSelect.appendChild(opt);
-    });
-    protoSelect.addEventListener("change", (event) =>
-      updateRule(profile.id, rule.id, "protocol", event.target.value),
-    );
-    protoField.appendChild(protoLabel);
-    protoField.appendChild(protoSelect);
-
     const domainField = document.createElement("div");
     domainField.className = "field";
     const domainLabel = document.createElement("label");
@@ -553,7 +533,6 @@ function renderDetail() {
 
     grid.appendChild(matchTypeField);
     grid.appendChild(matchField);
-    grid.appendChild(protoField);
     grid.appendChild(domainField);
     grid.appendChild(portField);
     grid.appendChild(deleteField);
@@ -565,7 +544,7 @@ function renderDetail() {
   const hint = document.createElement("div");
   hint.className = "muted";
   hint.textContent =
-    "URL Pattern 会按完整 URL 匹配；Host 模式只看 host，命中根域或任意子域后都会转发，且忽略 protocol 与 path。至少保留一条规则。";
+    "URL Pattern 会按完整 URL 匹配；Host 模式只看 host，命中根域或任意子域后都会转发，且忽略目标 URL 的 protocol 与 path。代理地址默认按 HTTP 代理处理。至少保留一条规则。";
 
   form.appendChild(nameField);
   form.appendChild(rulesHeader);

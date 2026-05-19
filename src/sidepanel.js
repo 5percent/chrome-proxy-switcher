@@ -129,7 +129,7 @@ function renderRulesSummary() {
     title.textContent = `#${index + 1} ${rule.matchType}: ${matchValue}`;
     const meta = document.createElement("div");
     meta.className = "rule-meta";
-    meta.textContent = `proxy=${rule.protocol === "HTTPS" ? "HTTPS" : "PROXY"} ${rule.domain}:${rule.port}`;
+    meta.textContent = `proxy=PROXY ${rule.domain}:${rule.port}`;
     row.appendChild(title);
     row.appendChild(meta);
     rulesSummaryEl.appendChild(row);

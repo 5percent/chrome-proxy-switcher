@@ -18,7 +18,6 @@ const defaultState = {
       rules: [
         {
           urlPattern: "*://*/*",
-          protocol: "HTTP",
           domain: "127.0.0.1",
           port: "8080",
         },
@@ -63,7 +62,6 @@ function normalizeRule(rule) {
   const host = normalizeHostValue(
     rule.host || rule.urlPattern || rule.value || "",
   );
-  const protocol = (rule.protocol || "HTTP").toUpperCase();
   const domain = rule.domain || "";
   const port = rule.port ? String(rule.port) : "";
   const matchValue = matchType === MATCH_TYPE_HOST ? host : urlPattern;
@@ -74,7 +72,6 @@ function normalizeRule(rule) {
     matchType,
     urlPattern: matchType === MATCH_TYPE_URL ? urlPattern : "",
     host: matchType === MATCH_TYPE_HOST ? host : "",
-    protocol,
     domain,
     port,
   };
@@ -109,7 +106,6 @@ function migrateLegacyRules(profile) {
 
   return matchedPatterns.map((urlPattern) => ({
     urlPattern,
-    protocol: "HTTP",
     domain: endpoint.domain,
     port: String(endpoint.port),
   }));
@@ -251,7 +247,7 @@ function evaluateProfileMatch(profile, rawUrl) {
       matched: result.matched,
       reason: result.reason,
       explanation: explainRule(rule),
-      proxy: `${rule.protocol === "HTTPS" ? "HTTPS" : "PROXY"} ${rule.domain}:${rule.port}; DIRECT`,
+      proxy: `PROXY ${rule.domain}:${rule.port}; DIRECT`,
     };
   });
 
@@ -323,8 +319,7 @@ function buildPacScript(profile) {
 
   const ruleBlocks = rules
     .map((rule) => {
-      const token = rule.protocol === "HTTPS" ? "HTTPS" : "PROXY";
-      const proxyValue = `${token} ${rule.domain}:${rule.port}; DIRECT`;
+      const proxyValue = `PROXY ${rule.domain}:${rule.port}; DIRECT`;
       return `if (${buildPacCondition(rule)}) return "${escapePac(proxyValue)}";`;
     })
     .join("\n  ");
