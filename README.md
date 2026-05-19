@@ -13,7 +13,9 @@
   - 左侧：Profile 列表（新增、删除、导入、导出）
   - 右侧：Profile 详情（重命名、规则编辑）
 - 每条规则支持：
+  - `matchType`（`urlPattern` / `host`）
   - `urlPattern`（PAC 的 `shExpMatch`）
+  - `host`（命中根域和任意子域，忽略 protocol/path）
   - `protocol`（HTTP / HTTPS）
   - `domain`
   - `port`
@@ -78,6 +80,7 @@
   2. 若为 `System Proxy`，清除扩展设置，让 Chrome 回退到系统代理
   3. 若为自定义 Profile，按规则生成 PAC 脚本并调用 `chrome.proxy.settings.set`
 - 命中规则时返回对应代理；未命中返回 `DIRECT`
+- `host` 模式会匹配 `example.com` 以及所有 `*.example.com`，不区分协议和路径
 
 ## 导入 / 导出（JSON）
 

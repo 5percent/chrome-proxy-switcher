@@ -1,5 +1,8 @@
 const STORAGE_KEY = "proxySwitcherState";
 
+const MATCH_TYPE_URL = "urlPattern";
+const MATCH_TYPE_HOST = "host";
+
 const defaultState = {
   profiles: [
     {
@@ -29,14 +32,52 @@ function isSystemProfile(profile) {
   return profile?.mode === "system" || profile?.mode === "direct";
 }
 
+function normalizeHostValue(value) {
+  if (!value || typeof value !== "string") return "";
+
+  let host = value.trim().toLowerCase();
+  if (!host) return "";
+
+  host = host.replace(/^[a-z]+:\/\//i, "");
+  host = host.split(/[/?#]/)[0] || "";
+  host = host.replace(/^\*\./, "").replace(/^\./, "");
+
+  if (host.includes(":")) {
+    const isIpv6Literal = host.startsWith("[") && host.endsWith("]");
+    if (!isIpv6Literal && host.indexOf(":") === host.lastIndexOf(":")) {
+      host = host.split(":")[0];
+    }
+  }
+
+  return host;
+}
+
+function getRuleMatchType(rule) {
+  return rule?.matchType === MATCH_TYPE_HOST ? MATCH_TYPE_HOST : MATCH_TYPE_URL;
+}
+
 function normalizeRule(rule) {
   if (!rule) return null;
+  const matchType = getRuleMatchType(rule);
   const urlPattern = rule.urlPattern || rule.value || "";
+  const host = normalizeHostValue(
+    rule.host || rule.urlPattern || rule.value || "",
+  );
   const protocol = (rule.protocol || "HTTP").toUpperCase();
   const domain = rule.domain || "";
   const port = rule.port ? String(rule.port) : "";
-  if (!urlPattern || !domain || !port) return null;
-  return { urlPattern, protocol, domain, port };
+  const matchValue = matchType === MATCH_TYPE_HOST ? host : urlPattern;
+
+  if (!matchValue || !domain || !port) return null;
+
+  return {
+    matchType,
+    urlPattern: matchType === MATCH_TYPE_URL ? urlPattern : "",
+    host: matchType === MATCH_TYPE_HOST ? host : "",
+    protocol,
+    domain,
+    port,
+  };
 }
 
 function parseLegacyProxyAddress(address) {
@@ -115,6 +156,16 @@ function escapePac(str) {
   return String(str).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+function buildPacCondition(rule) {
+  if (rule.matchType === MATCH_TYPE_HOST) {
+    const exactHost = escapePac(rule.host);
+    const subdomainSuffix = escapePac(`.${rule.host}`);
+    return `host === "${exactHost}" || dnsDomainIs(host, "${subdomainSuffix}")`;
+  }
+
+  return `shExpMatch(url, "${escapePac(rule.urlPattern)}")`;
+}
+
 function buildPacScript(profile) {
   if (isSystemProfile(profile)) {
     return "function FindProxyForURL(url, host) { return 'DIRECT'; }";
@@ -129,7 +180,7 @@ function buildPacScript(profile) {
     .map((rule) => {
       const token = rule.protocol === "HTTPS" ? "HTTPS" : "PROXY";
       const proxyValue = `${token} ${rule.domain}:${rule.port}; DIRECT`;
-      return `if (shExpMatch(url, \"${escapePac(rule.urlPattern)}\")) return \"${escapePac(proxyValue)}\";`;
+      return `if (${buildPacCondition(rule)}) return "${escapePac(proxyValue)}";`;
     })
     .join("\n  ");
 

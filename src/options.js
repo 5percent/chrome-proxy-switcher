@@ -1,5 +1,8 @@
 const STORAGE_KEY = "proxySwitcherState";
 
+const MATCH_TYPE_URL = "urlPattern";
+const MATCH_TYPE_HOST = "host";
+
 const listEl = document.getElementById("profile-list");
 const addBtn = document.getElementById("add-profile");
 const deleteBtn = document.getElementById("delete-profile");
@@ -21,10 +24,46 @@ function newRuleId() {
   return `rule-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function normalizeHostValue(value) {
+  if (!value || typeof value !== "string") return "";
+
+  let host = value.trim().toLowerCase();
+  if (!host) return "";
+
+  host = host.replace(/^[a-z]+:\/\//i, "");
+  host = host.split(/[/?#]/)[0] || "";
+  host = host.replace(/^\*\./, "").replace(/^\./, "");
+
+  if (host.includes(":")) {
+    const isIpv6Literal = host.startsWith("[") && host.endsWith("]");
+    if (!isIpv6Literal && host.indexOf(":") === host.lastIndexOf(":")) {
+      host = host.split(":")[0];
+    }
+  }
+
+  return host;
+}
+
+function getRuleMatchType(rule) {
+  return rule?.matchType === MATCH_TYPE_HOST ? MATCH_TYPE_HOST : MATCH_TYPE_URL;
+}
+
+function getRuleMatchLabel(matchType) {
+  return matchType === MATCH_TYPE_HOST ? "Host" : "URL Pattern";
+}
+
+function getRuleMatchPlaceholder(matchType) {
+  return matchType === MATCH_TYPE_HOST
+    ? "如 github.com，自动覆盖所有子域"
+    : "如 *://*.example.com/*";
+}
+
 function makeDefaultRule() {
   return {
     id: newRuleId(),
+    matchType: MATCH_TYPE_URL,
     urlPattern: "*://*/*",
+    host: "",
     protocol: "HTTP",
     domain: "",
     port: "8080",
@@ -33,9 +72,18 @@ function makeDefaultRule() {
 
 function normalizeRule(rule) {
   if (!rule) return makeDefaultRule();
+  const matchType = getRuleMatchType(rule);
   return {
     id: rule.id || newRuleId(),
-    urlPattern: rule.urlPattern || rule.value || "*://*/*",
+    matchType,
+    urlPattern:
+      matchType === MATCH_TYPE_URL
+        ? rule.urlPattern || rule.value || "*://*/*"
+        : rule.urlPattern || "",
+    host:
+      matchType === MATCH_TYPE_HOST
+        ? normalizeHostValue(rule.host || rule.urlPattern || rule.value || "")
+        : "",
     protocol: rule.protocol || "HTTP",
     domain: rule.domain || "",
     port: rule.port ? String(rule.port) : "",
@@ -394,18 +442,47 @@ function renderDetail() {
     const grid = document.createElement("div");
     grid.className = "rule-grid";
 
-    const urlField = document.createElement("div");
-    urlField.className = "field";
-    const urlLabel = document.createElement("label");
-    urlLabel.textContent = "URL Pattern";
-    const urlInput = document.createElement("input");
-    urlInput.value = rule.urlPattern;
-    urlInput.placeholder = "如 *://*.example.com/*";
-    urlInput.addEventListener("input", (event) =>
-      updateRule(profile.id, rule.id, "urlPattern", event.target.value),
+    const matchType = getRuleMatchType(rule);
+
+    const matchTypeField = document.createElement("div");
+    matchTypeField.className = "field";
+    const matchTypeLabel = document.createElement("label");
+    matchTypeLabel.textContent = "Match By";
+    const matchTypeSelect = document.createElement("select");
+    [
+      { value: MATCH_TYPE_URL, label: "URL Pattern" },
+      { value: MATCH_TYPE_HOST, label: "Host" },
+    ].forEach((optionValue) => {
+      const opt = document.createElement("option");
+      opt.value = optionValue.value;
+      opt.textContent = optionValue.label;
+      if (matchType === optionValue.value) opt.selected = true;
+      matchTypeSelect.appendChild(opt);
+    });
+    matchTypeSelect.addEventListener("change", (event) =>
+      updateRule(profile.id, rule.id, "matchType", event.target.value),
     );
-    urlField.appendChild(urlLabel);
-    urlField.appendChild(urlInput);
+    matchTypeField.appendChild(matchTypeLabel);
+    matchTypeField.appendChild(matchTypeSelect);
+
+    const matchField = document.createElement("div");
+    matchField.className = "field";
+    const matchLabel = document.createElement("label");
+    matchLabel.textContent = getRuleMatchLabel(matchType);
+    const matchInput = document.createElement("input");
+    matchInput.value =
+      matchType === MATCH_TYPE_HOST ? rule.host : rule.urlPattern;
+    matchInput.placeholder = getRuleMatchPlaceholder(matchType);
+    matchInput.addEventListener("input", (event) =>
+      updateRule(
+        profile.id,
+        rule.id,
+        matchType === MATCH_TYPE_HOST ? "host" : "urlPattern",
+        event.target.value,
+      ),
+    );
+    matchField.appendChild(matchLabel);
+    matchField.appendChild(matchInput);
 
     const protoField = document.createElement("div");
     protoField.className = "field";
@@ -470,7 +547,8 @@ function renderDetail() {
     deleteField.appendChild(deleteLabel);
     deleteField.appendChild(deleteRuleBtn);
 
-    grid.appendChild(urlField);
+    grid.appendChild(matchTypeField);
+    grid.appendChild(matchField);
     grid.appendChild(protoField);
     grid.appendChild(domainField);
     grid.appendChild(portField);
@@ -483,7 +561,7 @@ function renderDetail() {
   const hint = document.createElement("div");
   hint.className = "muted";
   hint.textContent =
-    "每条规则按 url pattern 匹配，命中后使用对应的 target protocol/domain/port 进行转发。至少保留一条规则。";
+    "URL Pattern 会按完整 URL 匹配；Host 模式只看 host，命中根域或任意子域后都会转发，且忽略 protocol 与 path。至少保留一条规则。";
 
   form.appendChild(nameField);
   form.appendChild(rulesHeader);
@@ -571,13 +649,35 @@ async function updateRule(profileId, ruleId, field, value) {
       if (p.id !== profileId) return p;
       return {
         ...p,
-        rules: p.rules.map((r) =>
-          r.id === ruleId ? { ...r, [field]: value } : r,
-        ),
+        rules: p.rules.map((r) => {
+          if (r.id !== ruleId) return r;
+
+          if (field === "matchType") {
+            return value === MATCH_TYPE_HOST
+              ? {
+                  ...r,
+                  matchType: MATCH_TYPE_HOST,
+                  host: normalizeHostValue(r.host || r.urlPattern || ""),
+                }
+              : {
+                  ...r,
+                  matchType: MATCH_TYPE_URL,
+                  urlPattern: r.urlPattern || "*://*/*",
+                };
+          }
+
+          return {
+            ...r,
+            [field]: field === "host" ? normalizeHostValue(value) : value,
+          };
+        }),
       };
     }),
   };
   await persistState();
+  if (field === "matchType") {
+    renderDetail();
+  }
 }
 
 async function deleteProfile(profileId) {
