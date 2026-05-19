@@ -395,9 +395,13 @@ function renderDetail() {
 
   detailTitleEl.textContent = profile.name;
   if (isSystemProfile(profile)) {
-    detailBodyEl.className = "detail-placeholder";
-    detailBodyEl.textContent =
+    detailBodyEl.className = "";
+    detailBodyEl.innerHTML = "";
+    const placeholder = document.createElement("div");
+    placeholder.className = "detail-placeholder";
+    placeholder.textContent =
       "System 模式会跟随操作系统代理设置（例如 ClashX），且不可编辑。";
+    detailBodyEl.appendChild(placeholder);
     deleteBtn.disabled = true;
     return;
   }

@@ -156,6 +156,151 @@ function escapePac(str) {
   return String(str).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+function shellPatternToRegExp(pattern) {
+  const escaped = String(pattern).replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+  return new RegExp(`^${escaped.replace(/\*/g, ".*")}$`);
+}
+
+function shExpMatchLocal(value, pattern) {
+  try {
+    return shellPatternToRegExp(pattern).test(String(value));
+  } catch (_error) {
+    return false;
+  }
+}
+
+function dnsDomainIsLocal(host, suffix) {
+  return String(host).endsWith(String(suffix));
+}
+
+function parseUrlForDebug(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+
+  try {
+    const url = new URL(rawUrl);
+    return {
+      url: url.toString(),
+      host: normalizeHostValue(url.hostname),
+      protocol: url.protocol,
+      path: `${url.pathname}${url.search}${url.hash}`,
+    };
+  } catch (_error) {
+    return null;
+  }
+}
+
+function evaluateRuleMatch(rule, target) {
+  if (!rule || !target) {
+    return { matched: false, reason: "missing_input" };
+  }
+
+  if (rule.matchType === MATCH_TYPE_HOST) {
+    const exact = target.host === rule.host;
+    const subdomain = dnsDomainIsLocal(target.host, `.${rule.host}`);
+    return {
+      matched: exact || subdomain,
+      reason: exact
+        ? "exact_host"
+        : subdomain
+          ? "subdomain_host"
+          : "host_mismatch",
+    };
+  }
+
+  const matched = shExpMatchLocal(target.url, rule.urlPattern);
+  return {
+    matched,
+    reason: matched ? "url_pattern" : "pattern_mismatch",
+  };
+}
+
+function explainRule(rule) {
+  if (rule.matchType === MATCH_TYPE_HOST) {
+    return `host = ${rule.host} or any subdomain`;
+  }
+
+  return `url matches ${rule.urlPattern}`;
+}
+
+function evaluateProfileMatch(profile, rawUrl) {
+  const target = parseUrlForDebug(rawUrl);
+  if (!target) {
+    return {
+      ok: false,
+      error: "Invalid URL",
+    };
+  }
+
+  if (!profile || isSystemProfile(profile)) {
+    return {
+      ok: true,
+      target,
+      matched: false,
+      action: "DIRECT",
+      reason: "system_profile",
+      ruleResults: [],
+    };
+  }
+
+  const rules = (profile.rules || []).map(normalizeRule).filter(Boolean);
+  const ruleResults = rules.map((rule, index) => {
+    const result = evaluateRuleMatch(rule, target);
+    return {
+      index,
+      rule,
+      matched: result.matched,
+      reason: result.reason,
+      explanation: explainRule(rule),
+      proxy: `${rule.protocol === "HTTPS" ? "HTTPS" : "PROXY"} ${rule.domain}:${rule.port}; DIRECT`,
+    };
+  });
+
+  const hit = ruleResults.find((item) => item.matched);
+  return {
+    ok: true,
+    target,
+    matched: Boolean(hit),
+    action: hit ? hit.proxy : "DIRECT",
+    reason: hit ? hit.reason : "no_rule_matched",
+    matchedRuleIndex: hit?.index ?? null,
+    ruleResults,
+  };
+}
+
+function getProxySettings() {
+  return new Promise((resolve, reject) => {
+    chrome.proxy.settings.get({ incognito: false }, (details) => {
+      const runtimeError = chrome.runtime.lastError;
+      if (runtimeError) {
+        reject(new Error(runtimeError.message));
+        return;
+      }
+      resolve(details);
+    });
+  });
+}
+
+async function getDebugState() {
+  const state = await getState();
+  const activeProfile =
+    state.profiles.find((profile) => profile.id === state.activeProfileId) ||
+    state.profiles[0] ||
+    null;
+  const normalizedProfile = activeProfile
+    ? normalizeProfile(activeProfile)
+    : null;
+  const proxySettings = await getProxySettings();
+
+  return {
+    activeProfileId: normalizedProfile?.id || null,
+    activeProfileName: normalizedProfile?.name || null,
+    isSystemProfile: isSystemProfile(normalizedProfile),
+    proxySettings,
+    pacScript: normalizedProfile ? buildPacScript(normalizedProfile) : null,
+    rules: normalizedProfile?.rules || [],
+  };
+}
+
 function buildPacCondition(rule) {
   if (rule.matchType === MATCH_TYPE_HOST) {
     const exactHost = escapePac(rule.host);
@@ -257,6 +402,38 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .then((state) => sendResponse({ state }))
       .catch((error) => {
         console.error("setActiveProfile failed", error);
+        sendResponse({ error: error?.message || "Unknown error" });
+      });
+    return true;
+  }
+
+  if (message?.type === "getDebugState") {
+    getDebugState()
+      .then((debugState) => sendResponse({ debugState }))
+      .catch((error) => {
+        console.error("getDebugState failed", error);
+        sendResponse({ error: error?.message || "Unknown error" });
+      });
+    return true;
+  }
+
+  if (message?.type === "testProxyMatch") {
+    getState()
+      .then((state) => {
+        const profile =
+          state.profiles.find((item) => item.id === message.profileId) ||
+          state.profiles.find((item) => item.id === state.activeProfileId) ||
+          state.profiles[0] ||
+          null;
+
+        return sendResponse({
+          result: evaluateProfileMatch(profile, message.url),
+          profileId: profile?.id || null,
+          profileName: profile?.name || null,
+        });
+      })
+      .catch((error) => {
+        console.error("testProxyMatch failed", error);
         sendResponse({ error: error?.message || "Unknown error" });
       });
     return true;

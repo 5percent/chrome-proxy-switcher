@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proxy Debug</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">Chrome Proxy Switcher</div>
+        <h1>调试面板</h1>
+      </div>
+      <div class="header-actions">
+        <button id="refresh-debug" class="secondary" type="button">刷新</button>
+        <button id="open-options" type="button">配置</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="card" id="effective-state"></section>
+
+      <section class="card">
+        <div class="section-header">
+          <h2>命中测试</h2>
+        </div>
+        <div class="field">
+          <label for="profile-select">测试 Profile</label>
+          <select id="profile-select"></select>
+        </div>
+        <div class="field">
+          <label for="test-url">测试 URL</label>
+          <input
+            id="test-url"
+            type="text"
+            placeholder="如 https://github.com/settings/profile"
+          />
+        </div>
+        <div class="actions-row">
+          <button id="run-test" type="button">测试命中</button>
+        </div>
+        <pre id="test-result" class="debug-pre muted-block">输入完整 URL 后，可查看命中规则或未命中原因。</pre>
+      </section>
+
+      <section class="card">
+        <div class="section-header">
+          <h2>当前 PAC</h2>
+        </div>
+        <pre id="pac-script" class="debug-pre muted-block">加载中...</pre>
+      </section>
+
+      <section class="card">
+        <div class="section-header">
+          <h2>当前规则</h2>
+        </div>
+        <div id="rules-summary" class="rules-list"></div>
+      </section>
+    </main>
+
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

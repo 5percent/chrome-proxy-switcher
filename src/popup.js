@@ -1,6 +1,7 @@
 const statusEl = document.getElementById("status");
 const profilesEl = document.getElementById("profiles");
 const openOptionsBtn = document.getElementById("open-options");
+const openDebugBtn = document.getElementById("open-debug");
 
 function renderState(state) {
   const active = state.profiles.find((p) => p.id === state.activeProfileId);
@@ -42,8 +43,20 @@ async function switchProfile(profileId) {
   renderState(state);
 }
 
+async function openDebugPanel() {
+  try {
+    const currentWindow = await chrome.windows.getCurrent();
+    await chrome.sidePanel.open({ windowId: currentWindow.id });
+    window.close();
+  } catch (error) {
+    statusEl.textContent = error?.message || "Failed to open debug panel";
+  }
+}
+
 openOptionsBtn.addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
 });
+
+openDebugBtn.addEventListener("click", openDebugPanel);
 
 fetchState();

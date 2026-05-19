@@ -9,9 +9,11 @@
 ## 功能概览
 
 - Popup 一键切换当前激活的代理配置
+- Popup 提供 `Debug` 按钮，可直接展开 Side Panel 调试面板
 - Options 页面左右布局：
   - 左侧：Profile 列表（新增、删除、导入、导出）
   - 右侧：Profile 详情（重命名、规则编辑）
+- Side Panel：查看当前生效代理状态、PAC 内容和 URL 命中测试
 - 每条规则支持：
   - `matchType`（`urlPattern` / `host`）
   - `urlPattern`（PAC 的 `shExpMatch`）
@@ -102,6 +104,18 @@
 - 选择 `System Proxy` 时，Chrome 会回退到系统代理，因此可与 ClashX 一起使用。
 - 若 Profile 规则未配置完整（如缺少 `domain/port`），会被视为无效规则。
 - 代理是否可达取决于你填写的目标代理服务本身。
+
+## 调试代理
+
+- 点击 Popup 里的 `Debug` 按钮，会展开 Side Panel 调试面板。
+- Side Panel 可查看：
+  - 当前已激活的 Profile
+  - `chrome.proxy.settings.get` 读到的当前设置
+  - 当前生效的 PAC 脚本
+  - 针对任意 URL 的本地命中推演结果
+- “测试命中”不会真的发起网络请求，而是按当前规则解释该 URL 会命中哪条规则，或为什么未命中。
+- 若要查看 Service Worker 日志，可在 `chrome://extensions/` 打开本扩展的“Service Worker”检查页面。
+- 若要抓真实网络层行为，可配合 Chrome DevTools 的 Network 面板，或使用 `chrome://net-export/` 导出网络日志进一步分析。
 
 ## 后续可扩展
 
